@@ -1,0 +1,21 @@
+# ShipSim Configuration
+# All simulation parameters live here. No source code changes needed to retune.
+
+[sim]
+max_ticks = 10_000
+random_seed = 42 # Remove this line for a non-deterministic run
+print_every = 10
+
+[world]
+width = 20
+height = 20
+num_robots = 5
+num_charging_stations = 2
+num_shelf_locations = 30
+num_obstacles = 15
+# The single drop-off point where robots deliver completed orders
+dispatch_x = 0
+dispatch_y = 0
+
+[orders]
+arrival_rate_lambda = 0.1  # Average orders generated per tick (Poisson λ)
