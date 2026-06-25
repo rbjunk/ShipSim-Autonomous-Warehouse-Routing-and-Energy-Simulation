@@ -4,3 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+rand     = "0.8"
+rand_distr = "0.4"   # Poisson distribution for order generation
+serde    = { version = "1.0", features = ["derive"] }
+toml     = "0.8"
