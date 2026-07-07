@@ -52,7 +52,7 @@ pub fn build_world(config: &Config, rng: &mut impl Rng) -> World {
             (wc.dispatch_x + i).min(wc.width - 1),
             wc.dispatch_y,
         );
-        robots.insert(id, Robot::new(id, pos));
+        robots.insert(id, Robot::new(id, pos, config.robot.battery_capacity));
     }
 
     World::new(grid, robots, stations, dispatch_pos)

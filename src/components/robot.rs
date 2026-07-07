@@ -1,12 +1,12 @@
 use crate::world::grid::Position;
 use crate::components::order::OrderId;
+use crate::components::station::StationId;
 
 /// Type-safe robot identifier.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RobotId(pub u32);
 
 /// The three states a robot can be in
-/// Charging states are out of scope and will be added later.
 #[derive(Debug, Clone, PartialEq)]
 pub enum RobotState {
     /// Waiting for the scheduler to assign a task
@@ -15,6 +15,12 @@ pub enum RobotState {
     RoutingToPickup { order_id: OrderId },
     /// Item collected; navigating to the dispatch zone to deliver it
     RoutingToDropoff { order_id: OrderId },
+    /// Battery is below threshold; routing to charging station
+    RoutingToCharge { station_id: StationId },
+    /// At a charging station but waiting in the queue for a charging slot
+    WaitingToCharge { station_id: StationId },
+    /// At a charging station and actively being charged
+    Charging { station_id: StationId },
 }
 
 /// All data for a single autonomous robot.
@@ -23,6 +29,9 @@ pub struct Robot {
     pub id:       RobotId,
     pub position: Position,
     pub state:    RobotState,
+
+    /// Current battery level, Range: [0.0, battery_capacity]
+    pub battery_level: f64,
 
     /// Where the robot is ultimately trying to reach.
     /// The pathfinding system reads this every tick to compute planned_path.
@@ -38,15 +47,21 @@ pub struct Robot {
 }
 
 impl Robot {
-    pub fn new(id: RobotId, position: Position) -> Self {
+    pub fn new(id: RobotId, position: Position, battery_capacity: f64) -> Self {
         Robot {
             id,
             position,
             state:               RobotState::Idle,
+            battery_level:       battery_capacity,
             destination:         None,
             planned_path:        Vec::new(),
             is_carrying_payload: false,
         }
+    }
+
+    /// True if the robot needs to stop what it's doing and go charge.
+    pub fn needs_recharge(&self, critical_threshold: f64) -> bool {
+        self.battery_level <= critical_threshold
     }
 
     /// True if the robot can accept a new task from the scheduler.
@@ -58,7 +73,9 @@ impl Robot {
     pub fn is_routing(&self) -> bool {
         matches!(
             self.state,
-            RobotState::RoutingToPickup { .. } | RobotState::RoutingToDropoff { .. }
+            RobotState::RoutingToPickup { .. }
+            | RobotState::RoutingToDropoff { .. }
+            | RobotState::RoutingToCharge { .. }
         )
     }
 }
