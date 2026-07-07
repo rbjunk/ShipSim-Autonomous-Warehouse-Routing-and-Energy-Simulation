@@ -3,8 +3,9 @@ use rand::rngs::StdRng;
 
 use crate::config::Config;
 use crate::components::robot::RobotState;
+use crate::debug;
 use crate::setup;
-use crate::systems::{movement, order_generator, pathfinding, scheduler};
+use crate::systems::{charging, energy, movement, order_generator, pathfinding, scheduler};
 use crate::world::World;
 
 /// Owns everything that spans the full simulation run.
@@ -12,6 +13,9 @@ pub struct Simulation {
     world:  World,
     config: Config,
     rng:    StdRng,
+    /// Tracks whether we have already fired the one-shot stuck dump so we
+    /// don't spam it every tick once a robot becomes stuck.
+    stuck_dumped: bool,
 }
 
 impl Simulation {
@@ -21,7 +25,7 @@ impl Simulation {
             None       => StdRng::from_entropy(),
         };
         let world = setup::build_world(&config, &mut rng);
-        Simulation { world, config, rng }
+        Simulation { world, config, rng, stuck_dumped: false, }
     }
 
     /// Runs the simulation for max_ticks and prints a final summary.
@@ -63,34 +67,45 @@ impl Simulation {
     // pathfinding     - (re)compute routes around current obstacles
     // movement        - advance each robot one step; collect arrival events
     // handle_arrivals - state transitions triggered by arrivals
+    // energy          - drains battery for robots that moved
+    // charging        - charges robots at stations, advances station queues
 
     fn run_tick(&mut self) {
         order_generator::run(&mut self.world, &self.config, &mut self.rng);
-        scheduler::run(&mut self.world);
+        scheduler::run(&mut self.world, &self.config);
         pathfinding::run(&mut self.world);
 
         let arrivals = movement::run(&mut self.world);
         self.handle_arrivals(arrivals);
 
+        energy::run(&mut self.world, &self.config);
+        charging::run(&mut self.world, &self.config);
+
         if self.world.tick % self.config.sim.print_every == 0 {
             self.print_status();
         }
+
+        self.maybe_print_debug();
 
         self.world.advance_tick();
     }
 
     /// Handles state transitions when a robot finishes a step of its journey.
     ///
+    /// This is where state transitions happen: a robot arriving at its pickup
+    /// location transitions to RoutingToDropoff; a robot arriving at the dispatch
+    /// zone becomes Idle; a robot arriving at a station joins the charge queue.
+    ///
     /// Keeping transitions here (not inside movement.rs) means the movement
     /// system stays focused on a single responsibility: moving robots one step.
     fn handle_arrivals(&mut self, arrivals: Vec<movement::ArrivalEvent>) {
         for event in arrivals {
             // Clone the state so we release the immutable borrow before mutating
-            let state = self.world.robots[&event.robot_id].state.clone();
+            let robot_state = self.world.robots[&event.robot_id].state.clone();
 
-            match state {
+            match robot_state {
                 RobotState::RoutingToPickup { order_id } => {
-                    // Robot reached the shelf — pick up item, head to dispatch
+                    // Robot reached the shelf;  pick up item and head to dispatch
                     let robot = self.world.robots.get_mut(&event.robot_id).unwrap();
                     robot.is_carrying_payload = true;
                     robot.state       = RobotState::RoutingToDropoff { order_id };
@@ -106,8 +121,27 @@ impl Simulation {
                     robot.destination = None;
                 }
 
-                // Idle robots don't move, so this branch shouldn't be reached
-                RobotState::Idle => {}
+                RobotState::RoutingToCharge { station_id } => {
+                    // Robot has physically arrived at the station.
+                    // Change state to Waiting and add it to the queue.
+                    // The charging system will pull it into the slot when one is free.
+                    let robot = self.world.robots.get_mut(&event.robot_id).unwrap();
+                    robot.state        = RobotState::WaitingToCharge { station_id };
+                    robot.destination  = None;
+                    robot.planned_path = Vec::new();
+
+                    // Enqueue after physical arrival. The charging system must
+                    // never try to charge a robot that hasn't reached the station yet
+                    self.world.stations
+                        .get_mut(&station_id)
+                        .unwrap()
+                        .enqueue(event.robot_id);
+                }
+
+                // No transition needed for these states
+                RobotState::Idle
+                | RobotState::Charging { .. }
+                | RobotState::WaitingToCharge { .. } => {}
             }
         }
     }
@@ -125,5 +159,36 @@ impl Simulation {
             idle,
             routing,
         );
+    }
+
+    fn maybe_print_debug(&mut self) {
+        let dc = &self.config.debug;
+        if !dc.enabled {
+            return;
+        }
+
+        let tick = self.world.tick;
+
+        // One-shot stuck dump: fires the first time any robot has no path
+        if dc.dump_on_stuck && !self.stuck_dumped && debug::has_stuck_robots(&self.world) {
+            println!("\n\x1b[1;31m!!! STUCK ROBOT DETECTED AT TICK {} !!!\x1b[0m\n", tick);
+            debug::print_grid(&self.world);
+            println!();
+            debug::print_status(&self.world);
+            println!();
+            self.stuck_dumped = true;
+        }
+
+        // Periodic grid print
+        if dc.grid_every > 0 && tick % dc.grid_every == 0 {
+            println!("\n─── Grid at tick {} ───────────────────────────", tick);
+            debug::print_grid(&self.world);
+        }
+
+        // Periodic status print
+        if dc.status_every > 0 && tick % dc.status_every == 0 {
+            println!("\n─── Status at tick {} ──────────────────────────", tick);
+            debug::print_status(&self.world);
+        }
     }
 }

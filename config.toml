@@ -2,7 +2,7 @@
 # All simulation parameters live here. No source code changes needed to retune.
 
 [sim]
-max_ticks = 10_000
+max_ticks = 10000
 random_seed = 42 # Remove this line for a non-deterministic run
 print_every = 10
 
@@ -14,8 +14,33 @@ num_charging_stations = 2
 num_shelf_locations = 30
 num_obstacles = 15
 # The single drop-off point where robots deliver completed orders
-dispatch_x = 0
-dispatch_y = 0
+dispatch_x = 10
+dispatch_y = 10
+
+[robot]
+battery_capacity = 100.0
+battery_critical_threshold = 20.0
+robot_mass_kg = 50.0
+payload_mass_kg = 10.0
+efficiency_coefficient = 0.01
+charge_rate_per_tick = 10.0
 
 [orders]
-arrival_rate_lambda = 0.1  # Average orders generated per tick (Poisson λ)
+arrival_rate_lambda = 0.5  # Average orders generated per tick (Poisson λ)
+
+[debug]
+# Master switch — flip to true to enable any debug output.
+enabled = true
+
+# Print the ASCII grid every N ticks (0 = never).
+# Useful for watching movement in slow motion. Try 100 or 500.
+grid_every = 1000
+
+# Print the full robot + station status every N ticks (0 = never).
+# Try 500 to get periodic snapshots, or set equal to max_ticks for end-of-run only.
+status_every = 10
+
+# Automatically dump the grid + status the first time a stuck robot is
+# detected (routing state but A* found no path). This is the most useful
+# setting for diagnosing freezes — leave it on.
+dump_on_stuck = true

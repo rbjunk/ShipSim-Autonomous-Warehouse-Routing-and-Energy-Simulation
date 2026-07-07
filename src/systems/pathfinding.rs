@@ -36,14 +36,15 @@ impl PartialOrd for AStarNode {
 ///
 /// Tiles in `occupied_positions` are penalized heavily, routing around them
 /// without making them absolutely impassable
+/// (adaptation of A* for dynamic obstacle avoidance)
 ///
 /// Returns `Some(path)` where `path[0]` is the first step to take,
 /// or `None` if no path exists at all (e.g. goal is fully surrounded by walls).
 pub fn find_path(
-    grid:               &Grid,
-    occupied_positions: &HashSet<Position>,
-    start:              Position,
-    goal:               Position,
+    grid:                &Grid,
+    occupied_positions:  &HashSet<Position>,
+    start:               Position,
+    goal:                Position,
 ) -> Option<Vec<Position>> {
     if start == goal {
         return Some(Vec::new());
@@ -74,6 +75,7 @@ pub fn find_path(
                 continue; // Hard wall — skip entirely
             }
 
+            // Base cost: 1 per tile. Heavy penalty if another robot is there.
             let step_cost = if occupied_positions.contains(&neighbor) {
                 1 + OCCUPIED_TILE_PENALTY
             } else {
@@ -86,8 +88,9 @@ pub fn find_path(
             if tentative_g < known_g {
                 came_from.insert(neighbor, current);
                 g_costs.insert(neighbor, tentative_g);
+                let h = neighbor.manhattan_distance(&goal);
                 open_set.push(AStarNode {
-                    f_cost:   tentative_g + neighbor.manhattan_distance(&goal),
+                    f_cost:   tentative_g + h,
                     g_cost:   tentative_g,
                     position: neighbor,
                 });
@@ -95,7 +98,7 @@ pub fn find_path(
         }
     }
 
-    None
+    None // No path exists
 }
 
 /// Walks `came_from` backward from the goal to produce a start→goal path,
@@ -112,10 +115,6 @@ fn reconstruct_path(came_from: &HashMap<Position, Position>, goal: Position) -> 
     path
 }
 
-// =============================================================================
-// Pathfinding System
-// =============================================================================
-
 /// Recalculates planned_path for every routing robot each tick.
 ///
 /// Runs every tick so robots continuously reroute around each other as they
@@ -127,20 +126,26 @@ fn reconstruct_path(came_from: &HashMap<Position, Position>, goal: Position) -> 
 ///   Phase 3 — write new paths back to robots (mutable borrow)
 pub fn run(world: &mut World) {
     // Phase 1: snapshot all robot positions as obstacles, and collect tasks
-    let all_positions: HashSet<Position> = world.robots
+    let all_robot_positions: HashSet<Position> = world.robots
         .values()
         .map(|r| r.position)
         .collect();
 
-    struct Task { robot_id: RobotId, start: Position, goal: Position }
+    struct RoutingTask {
+        robot_id:   RobotId,
+        start:      Position,
+        goal:       Position,
+        own_pos:    Position,
+    }
 
-    let tasks: Vec<Task> = world.robots
+    let tasks: Vec<RoutingTask> = world.robots
         .values()
         .filter(|r| r.destination.is_some() && r.is_routing())
-        .map(|r| Task {
+        .map(|r| RoutingTask {
             robot_id: r.id,
             start:    r.position,
             goal:     r.destination.unwrap(),
+            own_pos:  r.position,
         })
         .collect();
 
@@ -148,8 +153,9 @@ pub fn run(world: &mut World) {
     let new_paths: Vec<(RobotId, Vec<Position>)> = tasks
         .into_iter()
         .filter_map(|task| {
-            let mut obstacles = all_positions.clone();
-            obstacles.remove(&task.start); // don't route around yourself
+            // The robot should not treat its own current tile as an obstacle.
+            let mut obstacles = all_robot_positions.clone();
+            obstacles.remove(&task.own_pos);
 
             find_path(&world.grid, &obstacles, task.start, task.goal)
                 .map(|path| (task.robot_id, path))
