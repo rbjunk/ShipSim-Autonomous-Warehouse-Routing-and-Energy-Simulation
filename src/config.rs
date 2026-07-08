@@ -18,6 +18,7 @@ pub struct SimConfig {
     pub random_seed: Option<u64>,
     /// Print a one-line status summary to stdout every this many ticks.
     pub print_every: u64,
+    pub output_csv:  String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -84,6 +85,7 @@ impl Default for Config {
                 max_ticks:   2_000,
                 random_seed: Some(42),
                 print_every: 100,
+                output_csv:  "output/metrics.csv".to_string(),
             },
             world: WorldConfig {
                 width:                 20,

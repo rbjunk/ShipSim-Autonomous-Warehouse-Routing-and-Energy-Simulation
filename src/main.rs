@@ -5,6 +5,7 @@ mod simulation;
 mod systems;
 mod world;
 mod debug;
+mod metrics;
 
 use config::Config;
 use simulation::Simulation;
