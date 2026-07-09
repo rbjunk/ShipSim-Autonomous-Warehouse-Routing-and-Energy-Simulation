@@ -1,4 +1,5 @@
 pub mod csv_writer;
+pub mod summary_writer;
 
 use crate::world::World;
 use crate::components::robot::RobotState;
@@ -28,6 +29,12 @@ pub struct TickMetrics {
 
     /// Number of pending orders not yet assigned
     pub pending_order_count: usize,
+
+    /// Average battery level across all robots this tick (0.0–100.0)
+    pub avg_battery_level: f64,
+
+    /// Number of robots currently routing but with no path found (deadlocked)
+    pub deadlocked_robot_count: usize,
 }
 
 /// Collects metrics from the current world state for this tick.
@@ -83,6 +90,15 @@ pub fn collect(world: &World) -> TickMetrics {
         })
         .count();
 
+    let avg_battery_level = if world.robots.is_empty() { 0.0 } else {
+        world.robots.values().map(|r| r.battery_level).sum::<f64>()
+            / world.robots.len() as f64
+    };
+
+    let deadlocked_robot_count = world.robots.values().filter(|r| {
+        r.is_routing() && r.destination.is_some() && r.planned_path.is_empty()
+    }).count();
+
     TickMetrics {
         tick: world.tick,
         total_orders_completed,
@@ -92,5 +108,7 @@ pub fn collect(world: &World) -> TickMetrics {
         idle_robot_count,
         robots_in_charge_cycle,
         pending_order_count: world.pending_orders.len(),
+        avg_battery_level,
+        deadlocked_robot_count,
     }
 }

@@ -1,10 +1,10 @@
 # ShipSim Configuration
-# All simulation parameters live here. No source code changes needed to retune.
 
 [sim]
-max_ticks = 10000
+max_ticks = 500
 random_seed = 42 # Remove this line for a non-deterministic run
 print_every = 10
+output_csv =  "output/metrics.csv"
 
 [world]
 width = 20
@@ -26,7 +26,7 @@ efficiency_coefficient = 0.01
 charge_rate_per_tick = 10.0
 
 [orders]
-arrival_rate_lambda = 0.5  # Average orders generated per tick (Poisson λ)
+arrival_rate_lambda = 0.2  # Average orders generated per tick (Poisson λ)
 
 [debug]
 # Master switch — flip to true to enable any debug output.
