@@ -70,6 +70,12 @@ impl Simulation {
             Ok(_)  => println!("Metrics written to {}", csv_path),
             Err(e) => eprintln!("Failed to write metrics CSV: {}", e),
         }
+
+        let summary_path = "output/summary.txt";
+        match metrics::summary_writer::write_summary(summary_path, &self.world, &self.metrics_log) {
+            Ok(_)  => println!("Summary written to {}", summary_path),
+            Err(e) => eprintln!("Failed to write summary: {}", e),
+        }
     }
 
     // The Tick Loop
@@ -93,6 +99,7 @@ impl Simulation {
         let arrivals = movement::run(&mut self.world);
         self.handle_arrivals(arrivals);
 
+        pathfinding::run(&mut self.world);
         energy::run(&mut self.world, &self.config);
         charging::run(&mut self.world, &self.config);
 
