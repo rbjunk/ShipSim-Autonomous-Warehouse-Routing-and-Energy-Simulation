@@ -1,9 +1,9 @@
 # ShipSim Configuration
 
 [sim]
-max_ticks = 500
-random_seed = 42 # Remove this line for a non-deterministic run
-print_every = 10
+max_ticks = 1000
+random_seed = 1 # Remove this line for a non-deterministic run
+print_every = 100
 output_csv =  "output/metrics.csv"
 
 [world]
@@ -34,11 +34,11 @@ enabled = true
 
 # Print the ASCII grid every N ticks (0 = never).
 # Useful for watching movement in slow motion. Try 100 or 500.
-grid_every = 1000
+grid_every = 100
 
 # Print the full robot + station status every N ticks (0 = never).
 # Try 500 to get periodic snapshots, or set equal to max_ticks for end-of-run only.
-status_every = 10
+status_every = 100
 
 # Automatically dump the grid + status the first time a stuck robot is
 # detected (routing state but A* found no path). This is the most useful
