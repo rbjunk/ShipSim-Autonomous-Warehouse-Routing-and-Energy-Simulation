@@ -46,6 +46,13 @@ pub fn write_summary(
             / metrics_log.len() as f64
     };
 
+    let avg_fulfillment: f64 = world.completed_orders
+        .iter()
+        .filter_map(|o| o.fulfillment_time())
+        .map(|t| t as f64)
+        .sum::<f64>()
+        / world.completed_orders.len() as f64;
+
     // Count deadlock episodes: each time deadlocked_robot_count transitions
     // from 0 to >0 is one new deadlock event.
     let mut deadlock_episodes: u64 = 0;
@@ -61,14 +68,15 @@ pub fn write_summary(
     // ── Output ────────────────────────────────────────────────────────────────
     writeln!(w, "ShipSim - Run Summary")?;
     writeln!(w, "─────────────────────────────────────────")?;
-    writeln!(w, "total_ticks_elapsed:          {}", total_ticks)?;
-    writeln!(w, "total_orders_generated:       {}", orders_generated)?;
-    writeln!(w, "total_orders_completed:       {}", orders_completed)?;
-    writeln!(w, "total_order_throughput:       {:.4} orders/tick", throughput)?;
-    writeln!(w, "avg_robot_utilization:        {:.2}%", avg_utilization)?;
-    writeln!(w, "longest_charging_queue:       {}", longest_queue)?;
-    writeln!(w, "avg_battery_level:            {:.2}%", avg_battery)?;
-    writeln!(w, "deadlock_episodes:            {}", deadlock_episodes)?;
+    writeln!(w, "total_ticks_elapsed:     {}", total_ticks)?;
+    writeln!(w, "total_orders_generated:  {}", orders_generated)?;
+    writeln!(w, "total_orders_completed:  {}", orders_completed)?;
+    writeln!(w, "total_order_throughput:  {:.4} orders/tick", throughput)?;
+    writeln!(w, "avg_fulfillment:         {:.1}", avg_fulfillment)?;
+    writeln!(w, "avg_robot_utilization:   {:.2}%", avg_utilization)?;
+    writeln!(w, "longest_charging_queue:  {}", longest_queue)?;
+    writeln!(w, "avg_battery_level:       {:.2}%", avg_battery)?;
+    writeln!(w, "deadlock_episodes:       {}", deadlock_episodes)?;
 
     w.flush()?;
     Ok(())
