@@ -16,7 +16,8 @@ pub struct ArrivalEvent {
 /// on movement only.
 pub fn run(world: &mut World) -> Vec<ArrivalEvent> {
     let mut arrivals: Vec<ArrivalEvent> = Vec::new();
-    let robot_ids: Vec<RobotId> = world.robots.keys().copied().collect();
+    let mut robot_ids: Vec<RobotId> = world.robots.keys().copied().collect();
+    robot_ids.sort_by_key(|id| id.0);
 
     for id in robot_ids {
         let robot = world.robots.get_mut(&id).unwrap();
