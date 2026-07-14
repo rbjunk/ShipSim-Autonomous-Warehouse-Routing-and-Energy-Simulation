@@ -138,7 +138,7 @@ pub fn run(world: &mut World) {
         own_pos:    Position,
     }
 
-    let tasks: Vec<RoutingTask> = world.robots
+    let mut tasks: Vec<RoutingTask> = world.robots
         .values()
         .filter(|r| r.destination.is_some() && r.is_routing())
         .map(|r| RoutingTask {
@@ -148,6 +148,7 @@ pub fn run(world: &mut World) {
             own_pos:  r.position,
         })
         .collect();
+    tasks.sort_by_key(|t| t.robot_id.0);
 
     // Phase 2: compute paths — each robot excludes its own tile from obstacles
     let new_paths: Vec<(RobotId, Vec<Position>)> = tasks

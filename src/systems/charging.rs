@@ -11,7 +11,8 @@ use crate::world::World;
 /// At that point it leaves the station and returns to Idle.
 
 pub fn run(world: &mut World, config: &Config) {
-    let station_ids: Vec<_> = world.stations.keys().copied().collect();
+    let mut station_ids: Vec<_> = world.stations.keys().copied().collect();
+    station_ids.sort_by_key(|id| id.0);
 
     for station_id in station_ids {
         // Step 1: Charge the current robot, if any

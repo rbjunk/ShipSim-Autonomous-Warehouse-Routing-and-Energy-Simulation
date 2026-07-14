@@ -22,7 +22,7 @@ fn run_battery_triage(world: &mut World, config: &Config) {
     let threshold = config.robot.battery_critical_threshold;
 
     // Collect robots that need to recharge but aren't already heading there
-    let robots_needing_charge: Vec<RobotId> = world.robots
+    let mut robots_needing_charge: Vec<RobotId> = world.robots
         .values()
         .filter(|r| {
             r.needs_recharge(threshold)
@@ -35,7 +35,7 @@ fn run_battery_triage(world: &mut World, config: &Config) {
         })
         .map(|r| r.id)
         .collect();
-
+    robots_needing_charge.sort_by_key(|id| id.0);
     for robot_id in robots_needing_charge {
         let robot_pos = world.robots[&robot_id].position;
 
@@ -84,12 +84,12 @@ fn run_battery_triage(world: &mut World, config: &Config) {
 fn run_order_assignment(world: &mut World) {
     // Collect idle robots and pending orders (we need owned IDs to avoid
     // borrow conflicts when we mutate world below)
-    let idle_robots: Vec<RobotId> = world.robots
+    let mut idle_robots: Vec<RobotId> = world.robots
         .values()
         .filter(|r| r.is_idle())
         .map(|r| r.id)
         .collect();
-
+    idle_robots.sort_by_key(|id| id.0);
     if idle_robots.is_empty() || world.pending_orders.is_empty() {
         return;
     }
