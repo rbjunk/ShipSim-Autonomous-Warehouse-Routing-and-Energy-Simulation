@@ -1,7 +1,7 @@
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
 use std::path::Path;
-
+use std::time::Duration;
 use crate::world::World;
 use super::TickMetrics;
 
@@ -11,6 +11,7 @@ pub fn write_summary(
     path:        &str,
     world:       &World,
     metrics_log: &[TickMetrics],
+    duration:    Duration,
 ) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(parent) = Path::new(path).parent() {
         fs::create_dir_all(parent)?;
@@ -72,11 +73,12 @@ pub fn write_summary(
     writeln!(w, "total_orders_generated:  {}", orders_generated)?;
     writeln!(w, "total_orders_completed:  {}", orders_completed)?;
     writeln!(w, "total_order_throughput:  {:.4} orders/tick", throughput)?;
-    writeln!(w, "avg_fulfillment:         {:.1}", avg_fulfillment)?;
+    writeln!(w, "avg_fulfillment:         {:.1} ticks", avg_fulfillment)?;
     writeln!(w, "avg_robot_utilization:   {:.2}%", avg_utilization)?;
     writeln!(w, "longest_charging_queue:  {}", longest_queue)?;
     writeln!(w, "avg_battery_level:       {:.2}%", avg_battery)?;
     writeln!(w, "deadlock_episodes:       {}", deadlock_episodes)?;
+    writeln!(w, "Simulation finished in:  {:.3} seconds", duration.as_secs_f64())?;
 
     w.flush()?;
     Ok(())
