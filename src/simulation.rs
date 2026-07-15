@@ -1,3 +1,4 @@
+use std::time::Instant;
 use rand::SeedableRng;
 use rand::rngs::StdRng;
 
@@ -44,11 +45,11 @@ impl Simulation {
                  self.config.sim.max_ticks,
         );
         println!("{:-<60}", "");
-
+        let start = Instant::now();
         for _ in 0..self.config.sim.max_ticks {
             self.run_tick();
         }
-
+        let duration = start.elapsed();
         println!("{:-<60}", "");
         println!("Simulation complete at tick {}.", self.world.tick);
         println!("  Orders completed : {}", self.world.completed_orders.len());
@@ -72,7 +73,7 @@ impl Simulation {
         }
 
         let summary_path = "output/summary.txt";
-        match metrics::summary_writer::write_summary(summary_path, &self.world, &self.metrics_log) {
+        match metrics::summary_writer::write_summary(summary_path, &self.world, &self.metrics_log, duration) {
             Ok(_)  => println!("Summary written to {}", summary_path),
             Err(e) => eprintln!("Failed to write summary: {}", e),
         }
